@@ -5,14 +5,45 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Diagnostics.Metrics;
+using System.Reflection.Metadata;
 using System.Text;
+using static System.Net.Mime.MediaTypeNames;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "CatalogMinimalApi", Version = "v1" });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme."
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                          new OpenApiSecurityScheme
+                          {
+                              Reference = new OpenApiReference
+                              {
+                                  Type = ReferenceType.SecurityScheme,
+                                  Id = "Bearer"
+                              }
+                          },
+                         new string[] {}
+                    }
+                });
+});
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -73,14 +104,14 @@ app.MapPost("/login", [AllowAnonymous] (UserModel userModel, ITokenService token
               .WithTags("Authentication");
 
 // Categorias
-app.MapGet("/categories", async (AppDbContext db) => await db.Categories.ToListAsync()).RequireAuthorization();
+app.MapGet("/categories", async (AppDbContext db) => await db.Categories.ToListAsync()).WithTags("Categorias").RequireAuthorization();
 
 app.MapGet("/categories/{id:int}", async (int id, AppDbContext db) =>
 {
     return await db.Categories.FindAsync(id) is Category category
         ? Results.Ok(category)
         : Results.NotFound();
-});
+}).WithTags("Categorias");
 
 app.MapPost("/categories", async (Category category, AppDbContext db) => 
 { 
@@ -88,7 +119,7 @@ app.MapPost("/categories", async (Category category, AppDbContext db) =>
     await db.SaveChangesAsync();
 
     return Results.Created($"/categories/{category.CategoryId}", category);
-});
+}).WithTags("Categorias");
 
 app.MapPut("/categories/{id:int}", async (int id, Category updatedCategory, AppDbContext db) =>
 {
@@ -104,7 +135,7 @@ app.MapPut("/categories/{id:int}", async (int id, Category updatedCategory, AppD
 
     await db.SaveChangesAsync();
     return Results.Ok(category);
-});
+}).WithTags("Categorias");
 
 app.MapDelete("/categories/{id:int}", async (int id, AppDbContext db) => 
 {
@@ -115,17 +146,17 @@ app.MapDelete("/categories/{id:int}", async (int id, AppDbContext db) =>
     db.Categories.Remove(category);
     await db.SaveChangesAsync();
     return Results.Ok(category);
-});
+}).WithTags("Categorias");
 
 // Produtos
-app.MapGet("/products", async (AppDbContext db) => await db.Products.ToListAsync()).RequireAuthorization();
+app.MapGet("/products", async (AppDbContext db) => await db.Products.ToListAsync()).WithTags("Produtos").RequireAuthorization();
 
 app.MapGet("/products/{id:int}", async (int id, AppDbContext db) =>
 {
     return await db.Products.FindAsync(id) is Product product
         ? Results.Ok(product)
         : Results.NotFound();
-});
+}).WithTags("Produtos");
 
 app.MapPost("/products", async (Product product, AppDbContext db) =>
 {
@@ -138,7 +169,7 @@ app.MapPost("/products", async (Product product, AppDbContext db) =>
     await db.SaveChangesAsync();
 
     return Results.Created($"/categories/{product.ProductId}", product);
-});
+}).WithTags("Produtos");
 
 app.MapPut("/products/{id:int}", async (int id, Product updatedProduct, AppDbContext db) =>
 {
@@ -159,7 +190,7 @@ app.MapPut("/products/{id:int}", async (int id, Product updatedProduct, AppDbCon
 
     await db.SaveChangesAsync();
     return Results.Ok(product);
-});
+}).WithTags("Produtos");
 
 app.MapDelete("/products/{id:int}", async (int id, AppDbContext db) =>
 {
@@ -170,7 +201,7 @@ app.MapDelete("/products/{id:int}", async (int id, AppDbContext db) =>
     db.Products.Remove(product);
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).WithTags("Produtos");
 
 // /////////////////////////////////////////////////////////
 
