@@ -19,6 +19,7 @@ var app = builder.Build();
 
 // /////////////////////// Endpoints ///////////////////////
 
+// Categorias
 app.MapGet("/categories", async (AppDbContext db) => await db.Categories.ToListAsync());
 
 app.MapGet("/categories/{id:int}", async (int id, AppDbContext db) =>
@@ -33,12 +34,12 @@ app.MapPost("/categories", async (Category category, AppDbContext db) =>
     db.Categories.Add(category);
     await db.SaveChangesAsync();
 
-    return Results.Created($"/categories/{category.Id}", category);
+    return Results.Created($"/categories/{category.CategoryId}", category);
 });
 
 app.MapPut("/categories/{id:int}", async (int id, Category updatedCategory, AppDbContext db) =>
 {
-    if (updatedCategory.Id != id)
+    if (updatedCategory.CategoryId != id)
         return Results.BadRequest();
 
     var category = await db.Categories.FindAsync(id);
@@ -61,6 +62,61 @@ app.MapDelete("/categories/{id:int}", async (int id, AppDbContext db) =>
     db.Categories.Remove(category);
     await db.SaveChangesAsync();
     return Results.Ok(category);
+});
+
+// Produtos
+app.MapGet("/products", async (AppDbContext db) => await db.Products.ToListAsync());
+
+app.MapGet("/products/{id:int}", async (int id, AppDbContext db) =>
+{
+    return await db.Products.FindAsync(id) is Product product
+        ? Results.Ok(product)
+        : Results.NotFound();
+});
+
+app.MapPost("/products", async (Product product, AppDbContext db) =>
+{
+    var category = await db.Categories.FindAsync(product.CategoryId);
+    if (category is null) return Results.NotFound("Categoria inválida");
+
+    product.Category = category;
+
+    db.Products.Add(product);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/categories/{product.ProductId}", product);
+});
+
+app.MapPut("/products/{id:int}", async (int id, Product updatedProduct, AppDbContext db) =>
+{
+    if (updatedProduct.ProductId != id)
+        return Results.BadRequest();
+
+    var product = await db.Products.FindAsync(id);
+
+    if (product is null) return Results.NotFound();
+
+    product.Name = updatedProduct.Name;
+    product.Description = updatedProduct.Description;
+    product.Price = updatedProduct.Price;
+    product.ImageUrl = updatedProduct.ImageUrl;
+    product.PurchaseDate = updatedProduct.PurchaseDate;
+    product.Stock = updatedProduct.Stock;
+    product.CategoryId = updatedProduct.CategoryId;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(product);
+});
+
+app.MapDelete("/products/{id:int}", async (int id, AppDbContext db) =>
+{
+    var product = await db.Products.FindAsync(id);
+
+    if (product is null) return Results.NotFound();
+
+    db.Products.Remove(product);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
 });
 
 // /////////////////////////////////////////////////////////

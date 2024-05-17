@@ -14,11 +14,11 @@ public class AppDbContext : DbContext
     // Setting up database tables with FluentAPI
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Category>().HasKey(c => c.Id);
+        modelBuilder.Entity<Category>().HasKey(c => c.CategoryId);
         modelBuilder.Entity<Category>().Property(c => c.Name).HasMaxLength(100).IsRequired();
         modelBuilder.Entity<Category>().Property(c => c.Description).HasMaxLength(150).IsRequired();
 
-        modelBuilder.Entity<Product>().HasKey(c => c.Id);
+        modelBuilder.Entity<Product>().HasKey(c => c.ProductId);
         modelBuilder.Entity<Product>().Property(p => p.Name).HasMaxLength(100).IsRequired();
         modelBuilder.Entity<Product>().Property(p => p.Description).HasMaxLength(150);
         modelBuilder.Entity<Product>().Property(p => p.ImageUrl).HasMaxLength(100);
@@ -27,6 +27,6 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Product>()
             .HasOne<Category>(c => c.Category)
             .WithMany(p => p.Products)
-            .HasForeignKey(p => p.Id);
+            .HasForeignKey(p => p.ProductId);
     }
 }
