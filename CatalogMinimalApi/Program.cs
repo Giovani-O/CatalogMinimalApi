@@ -1,4 +1,5 @@
 using CatalogMinimalApi.Context;
+using CatalogMinimalApi.Endpoints;
 using CatalogMinimalApi.Models;
 using CatalogMinimalApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -6,11 +7,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Diagnostics.Metrics;
-using System.Reflection.Metadata;
 using System.Text;
-using static System.Net.Mime.MediaTypeNames;
 
+#region Configuration and build
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -76,132 +75,15 @@ builder.Services.AddAuthentication
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+#endregion
 
 // /////////////////////// Endpoints ///////////////////////
 
-// Auth
-app.MapPost("/login", [AllowAnonymous] (UserModel userModel, ITokenService tokenService) =>
-{
-    if (userModel == null)
-    {
-        return Results.BadRequest("Login Inválido");
-    }
-    if (userModel.UserName == "Gio" && userModel.Password == "Abc123!")
-    {
-        var tokenString = tokenService.GenerateToken(app.Configuration["Jwt:Key"],
-            app.Configuration["Jwt:Issuer"],
-            app.Configuration["Jwt:Audience"],
-            userModel);
-        return Results.Ok(new { token = tokenString });
-    }
-    else
-    {
-        return Results.BadRequest("Login Inválido");
-    }
-}).Produces(StatusCodes.Status400BadRequest)
-              .Produces(StatusCodes.Status200OK)
-              .WithName("Login")
-              .WithTags("Authentication");
+app.MapAuthenticationEndpoints();
 
-// Categorias
-app.MapGet("/categories", async (AppDbContext db) => await db.Categories.ToListAsync()).WithTags("Categorias").RequireAuthorization();
+app.MapCategoryEndpoints();
 
-app.MapGet("/categories/{id:int}", async (int id, AppDbContext db) =>
-{
-    return await db.Categories.FindAsync(id) is Category category
-        ? Results.Ok(category)
-        : Results.NotFound();
-}).WithTags("Categorias");
-
-app.MapPost("/categories", async (Category category, AppDbContext db) => 
-{ 
-    db.Categories.Add(category);
-    await db.SaveChangesAsync();
-
-    return Results.Created($"/categories/{category.CategoryId}", category);
-}).WithTags("Categorias");
-
-app.MapPut("/categories/{id:int}", async (int id, Category updatedCategory, AppDbContext db) =>
-{
-    if (updatedCategory.CategoryId != id)
-        return Results.BadRequest();
-
-    var category = await db.Categories.FindAsync(id);
-
-    if (category is null) return Results.NotFound();
-
-    category.Name = updatedCategory.Name;
-    category.Description = updatedCategory.Description;
-
-    await db.SaveChangesAsync();
-    return Results.Ok(category);
-}).WithTags("Categorias");
-
-app.MapDelete("/categories/{id:int}", async (int id, AppDbContext db) => 
-{
-    var category = await db.Categories.FindAsync(id);
-
-    if (category is null) return Results.NotFound();
-
-    db.Categories.Remove(category);
-    await db.SaveChangesAsync();
-    return Results.Ok(category);
-}).WithTags("Categorias");
-
-// Produtos
-app.MapGet("/products", async (AppDbContext db) => await db.Products.ToListAsync()).WithTags("Produtos").RequireAuthorization();
-
-app.MapGet("/products/{id:int}", async (int id, AppDbContext db) =>
-{
-    return await db.Products.FindAsync(id) is Product product
-        ? Results.Ok(product)
-        : Results.NotFound();
-}).WithTags("Produtos");
-
-app.MapPost("/products", async (Product product, AppDbContext db) =>
-{
-    var category = await db.Categories.FindAsync(product.CategoryId);
-    if (category is null) return Results.NotFound("Categoria inválida");
-
-    product.Category = category;
-
-    db.Products.Add(product);
-    await db.SaveChangesAsync();
-
-    return Results.Created($"/categories/{product.ProductId}", product);
-}).WithTags("Produtos");
-
-app.MapPut("/products/{id:int}", async (int id, Product updatedProduct, AppDbContext db) =>
-{
-    if (updatedProduct.ProductId != id)
-        return Results.BadRequest();
-
-    var product = await db.Products.FindAsync(id);
-
-    if (product is null) return Results.NotFound();
-
-    product.Name = updatedProduct.Name;
-    product.Description = updatedProduct.Description;
-    product.Price = updatedProduct.Price;
-    product.ImageUrl = updatedProduct.ImageUrl;
-    product.PurchaseDate = updatedProduct.PurchaseDate;
-    product.Stock = updatedProduct.Stock;
-    product.CategoryId = updatedProduct.CategoryId;
-
-    await db.SaveChangesAsync();
-    return Results.Ok(product);
-}).WithTags("Produtos");
-
-app.MapDelete("/products/{id:int}", async (int id, AppDbContext db) =>
-{
-    var product = await db.Products.FindAsync(id);
-
-    if (product is null) return Results.NotFound();
-
-    db.Products.Remove(product);
-    await db.SaveChangesAsync();
-    return Results.NoContent();
-}).WithTags("Produtos");
+app.MapProductEndpoints();
 
 // /////////////////////////////////////////////////////////
 
